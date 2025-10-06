@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel Administrativo - GERA Audiovisual e Comunicação</title>
+  <style>
+    /* === RESET E VARIÁVEIS === */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --amarelo: #FFD700;
+      --laranja: #FF8C00;
+      --vermelho: #fc520f;
+      --branco: #FFFFFF;
+      --preto: #000000;
+      --cinza-fundo: #f5f5f5;
+      --cinza-sidebar: #2c3e50;
+      --cinza-card: #ffffff;
+      --sombra: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--cinza-fundo);
+      color: var(--preto);
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* === HEADER MOBILE === */
+    .admin-header {
+      display: none;
+      padding: 16px;
+      background: var(--branco);
+      border-bottom: 1px solid #eee;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .menu-toggle {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--preto);
+    }
+
+    .logo-mobile {
+      font-size: 20px;
+      font-weight: bold;
+      color: var(--preto);
+    }
+
+    .logo-mobile span {
+      color: var(--vermelho);
+    }
+
+    /* === LAYOUT GERAL === */
+    .admin-container {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* === SIDEBAR === */
+    .sidebar {
+      width: 250px;
+      background-color: var(--cinza-sidebar);
+      color: var(--branco);
+      padding: 20px 0;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      transition: transform 0.3s ease;
+    }
+
+    /* Sidebar fechado em mobile */
+    .sidebar.collapsed {
+      transform: translateX(-100%);
+    }
+
+    .logo-admin {
+      text-align: center;
+      padding: 0 20px 20px;
+      border-bottom: 1px solid #34495e;
+      margin-bottom: 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .logo-admin span {
+      color: var(--amarelo);
+    }
+
+    .nav-item {
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .nav-item:hover, .nav-item.active {
+      background-color: #34495e;
+    }
+
+    .nav-item i {
+      font-size: 18px;
+      width: 24px;
+      text-align: center;
+    }
+
+    /* === CONTEÚDO PRINCIPAL === */
+    .main-content {
+      flex: 1;
+      margin-left: 250px;
+      padding: 24px;
+    }
+
+    /* === RESPONSIVIDADE === */
+    @media (max-width: 768px) {
+      .admin-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .sidebar {
+        width: 250px;
+        transform: translateX(0);
+      }
+
+      .sidebar.collapsed {
+        transform: translateX(-100%);
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding: 16px;
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header Mobile -->
+  <header class="admin-header">
+    <button class="menu-toggle" id="menu-toggle">☰</button>
+    <div class="logo-mobile">GERA<span> Admin</span></div>
+  </header>
+
+  <div class="admin-container">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="logo-admin">Admin<span>Notícias</span></div>
+      <div class="nav-item active" data-page="dashboard">
+        <i>📊</i>
+        <span class="nav-text">Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="noticias">
+        <i>📰</i>
+        <span class="nav-text">Notícias</span>
+      </div>
+      <div class="nav-item" data-page="usuarios">
+        <i>👥</i>
+        <span class="nav-text">Usuários</span>
+      </div>
+      <div class="nav-item" data-page="publicidade">
+        <i>📢</i>
+        <span class="nav-text">Publicidade</span>
+      </div>
+      <div class="nav-item" id="logout-btn">
+        <i>🚪</i>
+        <span class="nav-text">Sair</span>
+      </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <main class="main-content">
+      <!-- Dashboard -->
+      <div id="dashboard-page">
+        <div class="header-bar">
+          <h1>Dashboard</h1>
+        </div>
+
+        <!-- Estatísticas -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3>Usuários Cadastrados</h3>
+            <div class="value" id="total-usuarios">--</div>
+          </div>
+          <div class="stat-card">
+            <h3>Notícias Publicadas</h3>
+            <div class="value" id="total-noticias">--</div>
+          </div>
+          <div class="stat-card">
+            <h3>Anúncios Ativos</h3>
+            <div class="value" id="total-anuncios">--</div>
+          </div>
+        </div>
+
+        <!-- Últimas Ações -->
+        <h2>Atividades Recentes</h2>
+        <div class="table-container">
+          <table id="acoes-table">
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Ação</th>
+                <th>Categoria</th>
+                <th>Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dados carregados via fetch -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Notícias (inicialmente escondido) -->
+      <div id="noticias-page" style="display: none;">
+        <div class="header-bar">
+          <h1>Gerenciar Notícias</h1>
+          <button class="btn btn-primary" id="add-noticia-btn">+ Nova Notícia</button>
+        </div>
+        <div class="table-container">
+          <table id="noticias-table">
+            <thead>
+              <tr>
+                <th>Título</th>
+                <th>Categoria</th>
+                <th>Data</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Carregado via fetch -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Formulário de Nova Notícia (inicialmente escondido) -->
+        <div id="form-noticia" style="display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: var(--sombra);">
+          <h3 id="form-title">Nova Notícia</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="titulo">Título</label>
+              <input type="text" id="titulo" required>
+            </div>
+            <div class="form-group">
+              <label for="categoria">Categoria</label>
+              <select id="categoria" required>
+                <option value="Política">Política</option>
+                <option value="Cultura">Cultura</option>
+                <option value="Eventos">Eventos</option>
+                <option value="Comunidades">Comunidades</option>
+                <option value="Serviços">Serviços</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="resumo">Resumo</label>
+              <textarea id="resumo" required></textarea>
+            </div>
+            <div class="form-group">
+              <label for="imagem">URL da Imagem</label>
+              <input type="text" id="imagem">
+            </div>
+          </div>
+          <button class="btn btn-primary" id="save-noticia">Salvar</button>
+          <button class="btn" id="cancel-noticia" style="background: #eee;">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- Usuários -->
+      <div id="usuarios-page" style="display: none;">
+        <div class="header-bar">
+          <h1>Usuários</h1>
+          <button class="btn btn-primary" id="export-leads">Exportar Leads</button>
+        </div>
+        <div class="table-container">
+          <table id="usuarios-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>E-mail</th>
+                <th>Data de Cadastro</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Carregado via fetch -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Publicidade -->
+      <div id="publicidade-page" style="display: none;">
+        <div class="header-bar">
+          <h1>Gerenciar Anúncios</h1>
+          <button class="btn btn-primary" id="add-anuncio-btn">+ Novo Anúncio</button>
+        </div>
+        <div class="table-container">
+          <table id="anuncios-table">
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Carregado via fetch -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // === TOGGLE SIDEBAR ===
+    const sidebar = document.getElementById('sidebar');
+    const menuToggle = document.getElementById('menu-toggle');
+
+    function updateToggleIcon() {
+      if (sidebar.classList.contains('collapsed')) {
+        menuToggle.textContent = '☰';
+      } else {
+        menuToggle.textContent = '✕';
+      }
+    }
+
+    menuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      updateToggleIcon();
+    });
+
+    // Fechar sidebar ao clicar fora
+    document.addEventListener('click', (e) => {
+      const isClickInsideSidebar = sidebar.contains(e.target);
+      const isClickOnToggle = menuToggle.contains(e.target);
+
+      if (!isClickInsideSidebar && !isClickOnToggle && !sidebar.classList.contains('collapsed')) {
+        sidebar.classList.add('collapsed');
+        updateToggleIcon();
+      }
+    });
+
+    // === NAVEGAÇÃO NO MENU ===
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+      item.addEventListener('click', () => {
+        // Remove classe ativa
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        // Esconde todas as páginas
+        document.querySelectorAll('.main-content > div[id$="-page"]').forEach(page => {
+          page.style.display = 'none';
+        });
+
+        // Mostra a página selecionada
+        const pageId = item.dataset.page + '-page';
+        document.getElementById(pageId).style.display = 'block';
+
+        // Fecha sidebar em mobile após seleção
+        if (window.innerWidth <= 768) {
+          sidebar.classList.add('collapsed');
+          updateToggleIcon();
+        }
+      });
+    });
+
+    // Sair
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      if (confirm('Deseja sair do painel administrativo?')) {
+        window.location.href = '../index.html';
+      }
+    });
+
+    // === CARREGAR DADOS DO BACKEND ===
+    async function loadDashboardData() {
+      try {
+        const res = await fetch('/api/admin-dashboard');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('total-usuarios').textContent = data.totalUsuarios;
+          document.getElementById('total-noticias').textContent = data.totalNoticias;
+          document.getElementById('total-anuncios').textContent = data.totalAnuncios;
+        }
+      } catch (err) {
+        console.error('Erro ao carregar dashboard:', err);
+      }
+    }
+
+    async function loadRealtimeActions() {
+      try {
+        const res = await fetch('/api/realtime');
+        if (res.ok) {
+          const actions = await res.json();
+          const tbody = document.querySelector('#acoes-table tbody');
+          tbody.innerHTML = '';
+          actions.forEach(a => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${a.usuario}</td>
+              <td>${a.acao}</td>
+              <td><span class="tag ${a.categoria.toLowerCase()}">${a.categoria}</span></td>
+              <td>${new Date(a.data).toLocaleString('pt-BR')}</td>
+            `;
+            tbody.appendChild(tr);
+          });
+        }
+      } catch (err) {
+        console.error('Erro ao carregar ações:', err);
+      }
+    }
+
+    // Atualizar ações a cada 10 segundos
+    setInterval(loadRealtimeActions, 10000);
+
+    // === FUNCIONALIDADES DE NOTÍCIAS ===
+    document.getElementById('add-noticia-btn').addEventListener('click', () => {
+      document.getElementById('form-title').textContent = 'Nova Notícia';
+      document.getElementById('form-noticia').style.display = 'block';
+    });
+
+    document.getElementById('cancel-noticia').addEventListener('click', () => {
+      document.getElementById('form-noticia').style.display = 'none';
+    });
+
+    document.getElementById('save-noticia').addEventListener('click', async () => {
+      const noticia = {
+        titulo: document.getElementById('titulo').value,
+        categoria: document.getElementById('categoria').value,
+        resumo: document.getElementById('resumo').value,
+        imagem: document.getElementById('imagem').value || ''
+      };
+
+      try {
+        const res = await fetch('/api/add-news', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(noticia)
+        });
+        if (res.ok) {
+          alert('Notícia salva com sucesso!');
+          document.getElementById('form-noticia').style.display = 'none';
+        } else {
+          alert('Erro ao salvar notícia.');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Erro de conexão.');
+      }
+    });
+
+    // === EXPORTAR LEADS ===
+    document.getElementById('export-leads').addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/export-leads');
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'leads_usuarios.csv';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } else {
+          alert('Erro ao exportar leads.');
+        }
+      } catch (err) {
+        console.error('Erro na exportação:', err);
+        alert('Erro de conexão.');
+      }
+    });
+
+    // === INICIALIZAR ===
+    document.addEventListener('DOMContentLoaded', () => {
+      loadDashboardData();
+      loadRealtimeActions();
+      updateToggleIcon(); // Garante ícone correto ao carregar
+    });
+  </script>
+</body>
+</html>
