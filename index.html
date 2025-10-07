@@ -650,7 +650,7 @@
       formData.append('imagem', file);
       
       try {
-        const res = await fetch('/api/upload', {
+        const res = await fetch('https://backend-gera.onrender.com/api/upload', {
           method: 'POST',
           body: formData
         });
@@ -665,7 +665,7 @@
     // === CARREGAR DADOS ===
     async function loadDashboardData() {
       try {
-        const res = await fetch('/api/admin-dashboard');
+        const res = await fetch('https://backend-gera.onrender.com/api/admin-dashboard');
         if (res.ok) {
           const data = await res.json();
           document.getElementById('total-usuarios').textContent = data.totalUsuarios;
@@ -679,7 +679,7 @@
 
     async function loadRealtimeActions() {
       try {
-        const res = await fetch('/api/realtime');
+        const res = await fetch('https://backend-gera.onrender.com/api/realtime');
         if (res.ok) {
           const actions = await res.json();
           const tbody = document.querySelector('#acoes-table tbody');
@@ -702,7 +702,7 @@
 
     async function loadNoticias() {
       try {
-        const res = await fetch('/api/noticias-admin');
+        const res = await fetch('https://backend-gera.onrender.com/api/noticias-admin');
         if (res.ok) {
           const noticias = await res.json();
           const tbody = document.querySelector('#noticias-table tbody');
@@ -728,7 +728,7 @@
 
     async function loadUsuarios() {
       try {
-        const res = await fetch('/api/usuarios');
+        const res = await fetch('https://backend-gera.onrender.com/api/usuarios');
         if (res.ok) {
           const usuarios = await res.json();
           const tbody = document.querySelector('#usuarios-table tbody');
@@ -750,7 +750,7 @@
 
     async function loadAnuncios() {
       try {
-        const res = await fetch('/api/anuncios');
+        const res = await fetch('https://backend-gera.onrender.com/api/anuncios');
         if (res.ok) {
           const anuncios = await res.json();
           const tbody = document.querySelector('#anuncios-table tbody');
@@ -800,7 +800,7 @@
       };
 
       try {
-        const res = await fetch('/api/add-news', {
+        const res = await fetch('https://backend-gera.onrender.com/api/add-news', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
@@ -839,7 +839,7 @@
       };
 
       try {
-        const res = await fetch('/api/add-anuncio', {
+        const res = await fetch('https://backend-gera.onrender.com/api/add-anuncio', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData)
@@ -869,7 +869,7 @@
       const senha = document.getElementById('admin-password').value;
       
       try {
-        const res = await fetch(`/api/delete-anuncio/${id}`, {
+        const res = await fetch(`https://backend-gera.onrender.com/api/delete-anuncio/${id}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ senha })
@@ -891,7 +891,7 @@
     // === EXPORTAR LEADS ===
     document.getElementById('export-leads').addEventListener('click', async () => {
       try {
-        const res = await fetch('/api/export-leads');
+        const res = await fetch('https://backend-gera.onrender.com/api/export-leads');
         if (res.ok) {
           const blob = await res.blob();
           const url = window.URL.createObjectURL(blob);
