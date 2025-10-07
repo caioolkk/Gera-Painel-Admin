@@ -82,6 +82,13 @@
       transition: transform 0.3s ease;
     }
 
+    /* Mantém sidebar visível em desktop */
+    @media (min-width: 769px) {
+      .sidebar {
+        transform: translateX(0) !important;
+      }
+    }
+
     .sidebar.collapsed {
       transform: translateX(-100%);
     }
@@ -493,8 +500,8 @@
             <textarea id="corpo" required></textarea>
           </div>
           <div class="form-group">
-            <label for="imagem">URL da Imagem</label>
-            <input type="text" id="imagem">
+            <label for="imagem-noticia">Imagem (opcional)</label>
+            <input type="file" id="imagem-noticia" accept="image/*">
           </div>
         </div>
         <button type="submit" class="btn btn-primary">Salvar</button>
@@ -509,7 +516,7 @@
         <h2>Novo Anúncio</h2>
         <span class="close-modal" id="close-anuncio-modal">&times;</span>
       </div>
-      <form id="anuncio-form">
+      <form id="anuncio-form" enctype="multipart/form-data">
         <div class="form-grid">
           <div class="form-group">
             <label for="nome-anuncio">Nome *</label>
@@ -539,8 +546,30 @@
             <label for="mensagem-anuncio">Mensagem *</label>
             <textarea id="mensagem-anuncio" required></textarea>
           </div>
+          <div class="form-group">
+            <label for="imagem-anuncio">Imagem do Anúncio</label>
+            <input type="file" id="imagem-anuncio" accept="image/*">
+          </div>
         </div>
         <button type="submit" class="btn btn-primary">Salvar Anúncio</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Confirmação de Exclusão -->
+  <div class="modal" id="delete-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Confirmar Exclusão</h2>
+        <span class="close-modal" id="close-delete-modal">&times;</span>
+      </div>
+      <form id="delete-form">
+        <div class="form-group">
+          <label for="admin-password">Senha do Administrador *</label>
+          <input type="password" id="admin-password" required>
+          <input type="hidden" id="delete-id">
+        </div>
+        <button type="submit" class="btn btn-primary">Confirmar Exclusão</button>
       </form>
     </div>
   </div>
@@ -555,7 +584,6 @@
       document.getElementById(modalId).style.display = 'none';
     }
 
-    // Fechar modais ao clicar no X ou fora
     document.querySelectorAll('.close-modal').forEach(btn => {
       btn.addEventListener('click', () => {
         const modal = btn.closest('.modal');
@@ -614,6 +642,25 @@
         window.location.href = '../index.html';
       }
     });
+
+    // === UPLOAD DE IMAGEM ===
+    async function uploadImage(file) {
+      if (!file) return null;
+      const formData = new FormData();
+      formData.append('imagem', file);
+      
+      try {
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        const result = await res.json();
+        return result.filename;
+      } catch (err) {
+        alert('Erro ao fazer upload da imagem');
+        return null;
+      }
+    }
 
     // === CARREGAR DADOS ===
     async function loadDashboardData() {
@@ -714,11 +761,17 @@
               <td>${a.empresa || a.nome}</td>
               <td><span class="tag ${a.status === 'ativo' ? 'ativo' : 'inativo'}">${a.status}</span></td>
               <td>
-                <button class="btn btn-edit" data-id="${a.id}">Editar</button>
                 <button class="btn btn-delete" data-id="${a.id}">Excluir</button>
               </td>
             `;
             tbody.appendChild(tr);
+          });
+          
+          // Adicionar evento de exclusão
+          document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', () => {
+              openDeleteModal(btn.dataset.id);
+            });
           });
         }
       } catch (err) {
@@ -735,12 +788,15 @@
 
     document.getElementById('noticia-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const file = document.getElementById('imagem-noticia').files[0];
+      const imagem = await uploadImage(file);
+      
       const formData = {
         titulo: document.getElementById('titulo').value,
         categoria: document.getElementById('categoria').value,
         resumo: document.getElementById('resumo').value,
         corpo: document.getElementById('corpo').value,
-        imagem: document.getElementById('imagem').value || ''
+        imagem: imagem
       };
 
       try {
@@ -769,13 +825,17 @@
 
     document.getElementById('anuncio-form').addEventListener('submit', async (e) => {
       e.preventDefault();
+      const file = document.getElementById('imagem-anuncio').files[0];
+      const imagem = await uploadImage(file);
+      
       const formData = {
         nome: document.getElementById('nome-anuncio').value,
         empresa: document.getElementById('empresa-anuncio').value,
         email: document.getElementById('email-anuncio').value,
         telefone: document.getElementById('telefone-anuncio').value,
         tipo: document.getElementById('tipo-anuncio').value,
-        mensagem: document.getElementById('mensagem-anuncio').value
+        mensagem: document.getElementById('mensagem-anuncio').value,
+        imagem: imagem
       };
 
       try {
@@ -791,6 +851,37 @@
         } else {
           const error = await res.json();
           alert('Erro: ' + (error.error || 'Não foi possível salvar.'));
+        }
+      } catch (err) {
+        alert('Erro de conexão.');
+      }
+    });
+
+    // === EXCLUSÃO COM SENHA ===
+    function openDeleteModal(id) {
+      document.getElementById('delete-id').value = id;
+      openModal('delete-modal');
+    }
+
+    document.getElementById('delete-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('delete-id').value;
+      const senha = document.getElementById('admin-password').value;
+      
+      try {
+        const res = await fetch(`/api/delete-anuncio/${id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ senha })
+        });
+        
+        if (res.ok) {
+          alert('Anúncio excluído com sucesso!');
+          closeModal('delete-modal');
+          loadAnuncios();
+        } else {
+          const error = await res.json();
+          alert('Erro: ' + (error.error || 'Senha incorreta'));
         }
       } catch (err) {
         alert('Erro de conexão.');
