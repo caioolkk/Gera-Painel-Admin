@@ -82,7 +82,6 @@
       transition: transform 0.3s ease;
     }
 
-    /* Mantém sidebar visível em desktop */
     @media (min-width: 769px) {
       .sidebar {
         transform: translateX(0) !important;
@@ -334,6 +333,61 @@
 </head>
 <body>
 
+  <!-- Modal de Login Obrigatório -->
+  <div id="login-modal" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  ">
+    <div style="
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      text-align: center;
+    ">
+      <h2 style="color: #000; margin-bottom: 20px;">Acesso Administrativo</h2>
+      <div id="login-error" style="color: #fc520f; margin-bottom: 12px; display: none;"></div>
+      
+      <div style="margin-bottom: 16px; text-align: left;">
+        <label for="login-email" style="display: block; margin-bottom: 6px; font-weight: bold;">E-mail</label>
+        <input type="email" id="login-email" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" required>
+      </div>
+      
+      <div style="margin-bottom: 20px; text-align: left;">
+        <label for="login-password" style="display: block; margin-bottom: 6px; font-weight: bold;">Senha</label>
+        <input type="password" id="login-password" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;" required>
+      </div>
+      
+      <button id="login-submit" style="
+        width: 100%;
+        padding: 12px;
+        background: #FF8C00;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: bold;
+        cursor: pointer;
+      ">Entrar</button>
+      
+      <p style="margin-top: 16px; font-size: 13px; color: #666;">
+        Credenciais padrão:<br>
+        <strong>E-mail:</strong> admin@admin.com<br>
+        <strong>Senha:</strong> admin123
+      </p>
+    </div>
+  </div>
+
   <!-- Header Mobile -->
   <header class="admin-header">
     <button class="menu-toggle" id="menu-toggle">☰</button>
@@ -557,7 +611,60 @@
   </div>
 
   <script>
-    // === MODAIS ===
+    // === LOGIN OBRIGATÓRIO ===
+    function checkAuth() {
+      const isLoggedIn = localStorage.getItem('gera_admin_logged_in') === 'true';
+      const loginModal = document.getElementById('login-modal');
+      if (isLoggedIn) {
+        loginModal.style.display = 'none';
+      } else {
+        loginModal.style.display = 'flex';
+      }
+    }
+
+    async function handleLogin(email, password) {
+      try {
+        const res = await fetch('https://backend-gera.onrender.com/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (res.ok && data.success && data.isAdmin) {
+          localStorage.setItem('gera_admin_logged_in', 'true');
+          document.getElementById('login-modal').style.display = 'none';
+          loadDashboardData();
+          loadRealtimeActions();
+        } else {
+          showError('Credenciais inválidas ou acesso negado.');
+        }
+      } catch (err) {
+        showError('Erro de conexão com o servidor.');
+      }
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('login-error');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+    }
+
+    document.getElementById('login-submit').addEventListener('click', () => {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) {
+        showError('Preencha todos os campos.');
+        return;
+      }
+      handleLogin(email, password);
+    });
+
+    document.getElementById('login-password').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') document.getElementById('login-submit').click();
+    });
+
+    // === RESTANTE DO SCRIPT (MODAIS, SIDEBAR, etc.) ===
     function openModal(modalId) {
       document.getElementById(modalId).style.display = 'flex';
     }
@@ -579,7 +686,6 @@
       }
     });
 
-    // === TOGGLE SIDEBAR ===
     const sidebar = document.getElementById('sidebar');
     const menuToggle = document.getElementById('menu-toggle');
 
@@ -601,7 +707,6 @@
       }
     });
 
-    // === NAVEGAÇÃO NO MENU ===
     document.querySelectorAll('.nav-item[data-page]').forEach(item => {
       item.addEventListener('click', () => {
         document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
@@ -610,7 +715,6 @@
           page.style.display = 'none';
         });
         document.getElementById(item.dataset.page + '-page').style.display = 'block';
-        
         if (window.innerWidth <= 768) {
           sidebar.classList.add('collapsed');
           updateToggleIcon();
@@ -618,19 +722,17 @@
       });
     });
 
-    // Sair
     document.getElementById('logout-btn').addEventListener('click', () => {
       if (confirm('Deseja sair do painel administrativo?')) {
-        window.location.href = '../index.html';
+        localStorage.removeItem('gera_admin_logged_in');
+        location.reload();
       }
     });
 
-    // === UPLOAD DE IMAGEM ===
     async function uploadImage(file) {
       if (!file) return null;
       const formData = new FormData();
       formData.append('imagem', file);
-      
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/upload', {
           method: 'POST',
@@ -644,7 +746,6 @@
       }
     }
 
-    // === CARREGAR DADOS ===
     async function loadDashboardData() {
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/admin-dashboard');
@@ -664,7 +765,6 @@
         const res = await fetch('https://backend-gera.onrender.com/api/realtime');
         if (res.ok) {
           const actions = await res.json();
-          // ✅ FILTRAR: só mostrar ações de administradores
           const adminActions = actions.filter(a => 
             a.usuario === 'admin' || 
             a.usuario.toLowerCase().includes('admin') ||
@@ -688,7 +788,6 @@
       }
     }
 
-    // === CARREGAR NOTÍCIAS ===
     async function loadNoticias() {
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/noticias-admin');
@@ -710,22 +809,16 @@
             tbody.appendChild(tr);
           });
 
-          // ✅ ADICIONAR EVENTOS APÓS CRIAR OS BOTÕES
           document.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', () => {
-              openEditNoticia(btn.dataset.id);
-            });
+            btn.addEventListener('click', () => openEditNoticia(btn.dataset.id));
           });
 
           document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => {
               if (confirm('Tem certeza que deseja excluir esta notícia?')) {
                 const senha = prompt('Digite a senha do administrador:');
-                if (senha === 'admin123') {
-                  deleteNoticia(btn.dataset.id);
-                } else if (senha !== null) {
-                  alert('Senha incorreta.');
-                }
+                if (senha === 'admin123') deleteNoticia(btn.dataset.id);
+                else if (senha !== null) alert('Senha incorreta.');
               }
             });
           });
@@ -735,7 +828,6 @@
       }
     }
 
-    // === EDITAR NOTÍCIA ===
     async function openEditNoticia(id) {
       try {
         const res = await fetch(`https://backend-gera.onrender.com/api/noticia?id=${id}`);
@@ -750,7 +842,6 @@
         document.getElementById('modal-noticia-title').textContent = 'Editar Notícia';
         openModal('noticia-modal');
 
-        // Substituir submit para atualizar
         const form = document.getElementById('noticia-form');
         form.onsubmit = async (e) => {
           e.preventDefault();
@@ -776,7 +867,7 @@
               alert('Notícia atualizada com sucesso!');
               closeModal('noticia-modal');
               loadNoticias();
-              form.onsubmit = null; // reset
+              form.onsubmit = null;
             } else {
               const error = await res.json();
               alert('Erro: ' + (error.error || 'Não foi possível atualizar.'));
@@ -790,7 +881,6 @@
       }
     }
 
-    // === EXCLUIR NOTÍCIA ===
     async function deleteNoticia(id) {
       try {
         const res = await fetch(`https://backend-gera.onrender.com/api/delete-news/${id}`, {
@@ -851,15 +941,11 @@
             tbody.appendChild(tr);
           });
           
-          // ✅ EVENTOS DE EXCLUSÃO PARA ANÚNCIOS
           document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => {
               const senha = prompt('Digite a senha do administrador para excluir este anúncio:');
-              if (senha === 'admin123') {
-                deleteAnuncio(btn.dataset.id);
-              } else if (senha !== null) {
-                alert('Senha incorreta.');
-              }
+              if (senha === 'admin123') deleteAnuncio(btn.dataset.id);
+              else if (senha !== null) alert('Senha incorreta.');
             });
           });
         }
@@ -868,7 +954,6 @@
       }
     }
 
-    // === EXCLUIR ANÚNCIO ===
     async function deleteAnuncio(id) {
       try {
         const res = await fetch(`https://backend-gera.onrender.com/api/delete-anuncio/${id}`, {
@@ -888,7 +973,6 @@
       }
     }
 
-    // === FORMULÁRIOS ===
     document.getElementById('add-noticia-btn').addEventListener('click', () => {
       document.getElementById('noticia-form').reset();
       document.getElementById('modal-noticia-title').textContent = 'Nova Notícia';
@@ -900,7 +984,6 @@
       e.preventDefault();
       const file = document.getElementById('imagem-noticia').files[0];
       const imagem = await uploadImage(file);
-      
       const formData = {
         titulo: document.getElementById('titulo').value,
         categoria: document.getElementById('categoria').value,
@@ -908,7 +991,6 @@
         corpo: document.getElementById('corpo').value,
         imagem: imagem
       };
-
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/add-news', {
           method: 'POST',
@@ -937,7 +1019,6 @@
       e.preventDefault();
       const file = document.getElementById('imagem-anuncio').files[0];
       const imagem = await uploadImage(file);
-      
       const formData = {
         nome: document.getElementById('nome-anuncio').value,
         empresa: document.getElementById('empresa-anuncio').value,
@@ -947,7 +1028,6 @@
         mensagem: document.getElementById('mensagem-anuncio').value,
         imagem: imagem
       };
-
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/add-anuncio', {
           method: 'POST',
@@ -967,7 +1047,6 @@
       }
     });
 
-    // === EXPORTAR LEADS ===
     document.getElementById('export-leads').addEventListener('click', async () => {
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/export-leads');
@@ -989,16 +1068,9 @@
       }
     });
 
-    // === INICIALIZAR ===
     document.addEventListener('DOMContentLoaded', () => {
-      loadDashboardData();
-      loadRealtimeActions();
-      setInterval(loadRealtimeActions, 10000);
+      checkAuth();
       updateToggleIcon();
-
-      document.querySelector('.nav-item[data-page="noticias"]').addEventListener('click', loadNoticias);
-      document.querySelector('.nav-item[data-page="usuarios"]').addEventListener('click', loadUsuarios);
-      document.querySelector('.nav-item[data-page="publicidade"]').addEventListener('click', loadAnuncios);
     });
   </script>
 </body>
