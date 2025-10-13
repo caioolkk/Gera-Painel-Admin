@@ -556,24 +556,6 @@
     </div>
   </div>
 
-  <!-- Modal de Confirmação de Exclusão -->
-  <div class="modal" id="delete-modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2>Confirmar Exclusão</h2>
-        <span class="close-modal" id="close-delete-modal">&times;</span>
-      </div>
-      <form id="delete-form">
-        <div class="form-group">
-          <label for="admin-password">Senha do Administrador *</label>
-          <input type="password" id="admin-password" required>
-          <input type="hidden" id="delete-id">
-        </div>
-        <button type="submit" class="btn btn-primary">Confirmar Exclusão</button>
-      </form>
-    </div>
-  </div>
-
   <script>
     // === MODAIS ===
     function openModal(modalId) {
@@ -682,9 +664,15 @@
         const res = await fetch('https://backend-gera.onrender.com/api/realtime');
         if (res.ok) {
           const actions = await res.json();
+          // ✅ FILTRAR: só mostrar ações de administradores
+          const adminActions = actions.filter(a => 
+            a.usuario === 'admin' || 
+            a.usuario.toLowerCase().includes('admin') ||
+            a.acao.toLowerCase().includes('login')
+          );
           const tbody = document.querySelector('#acoes-table tbody');
           tbody.innerHTML = '';
-          actions.forEach(a => {
+          adminActions.forEach(a => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
               <td>${a.usuario}</td>
@@ -700,6 +688,7 @@
       }
     }
 
+    // === CARREGAR NOTÍCIAS ===
     async function loadNoticias() {
       try {
         const res = await fetch('https://backend-gera.onrender.com/api/noticias-admin');
@@ -720,9 +709,104 @@
             `;
             tbody.appendChild(tr);
           });
+
+          // ✅ ADICIONAR EVENTOS APÓS CRIAR OS BOTÕES
+          document.querySelectorAll('.btn-edit').forEach(btn => {
+            btn.addEventListener('click', () => {
+              openEditNoticia(btn.dataset.id);
+            });
+          });
+
+          document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', () => {
+              if (confirm('Tem certeza que deseja excluir esta notícia?')) {
+                const senha = prompt('Digite a senha do administrador:');
+                if (senha === 'admin123') {
+                  deleteNoticia(btn.dataset.id);
+                } else if (senha !== null) {
+                  alert('Senha incorreta.');
+                }
+              }
+            });
+          });
         }
       } catch (err) {
         console.error('Erro ao carregar notícias:', err);
+      }
+    }
+
+    // === EDITAR NOTÍCIA ===
+    async function openEditNoticia(id) {
+      try {
+        const res = await fetch(`https://backend-gera.onrender.com/api/noticia?id=${id}`);
+        if (!res.ok) throw new Error('Notícia não encontrada');
+        const noticia = await res.json();
+
+        document.getElementById('titulo').value = noticia.titulo || '';
+        document.getElementById('categoria').value = noticia.categoria || 'Política';
+        document.getElementById('resumo').value = noticia.resumo || '';
+        document.getElementById('corpo').value = noticia.corpo || '';
+
+        document.getElementById('modal-noticia-title').textContent = 'Editar Notícia';
+        openModal('noticia-modal');
+
+        // Substituir submit para atualizar
+        const form = document.getElementById('noticia-form');
+        form.onsubmit = async (e) => {
+          e.preventDefault();
+          const file = document.getElementById('imagem-noticia').files[0];
+          const imagem = file ? await uploadImage(file) : noticia.imagem;
+
+          const formData = {
+            id: id,
+            titulo: document.getElementById('titulo').value,
+            categoria: document.getElementById('categoria').value,
+            resumo: document.getElementById('resumo').value,
+            corpo: document.getElementById('corpo').value,
+            imagem: imagem
+          };
+
+          try {
+            const res = await fetch('https://backend-gera.onrender.com/api/update-news', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(formData)
+            });
+            if (res.ok) {
+              alert('Notícia atualizada com sucesso!');
+              closeModal('noticia-modal');
+              loadNoticias();
+              form.onsubmit = null; // reset
+            } else {
+              const error = await res.json();
+              alert('Erro: ' + (error.error || 'Não foi possível atualizar.'));
+            }
+          } catch (err) {
+            alert('Erro de conexão.');
+          }
+        };
+      } catch (err) {
+        alert('Erro ao carregar notícia.');
+      }
+    }
+
+    // === EXCLUIR NOTÍCIA ===
+    async function deleteNoticia(id) {
+      try {
+        const res = await fetch(`https://backend-gera.onrender.com/api/delete-news/${id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ senha: 'admin123' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Notícia excluída com sucesso!');
+          loadNoticias();
+        } else {
+          alert('Erro ao excluir: ' + (data.error || ''));
+        }
+      } catch (err) {
+        alert('Erro de conexão.');
       }
     }
 
@@ -767,10 +851,15 @@
             tbody.appendChild(tr);
           });
           
-          // Adicionar evento de exclusão
+          // ✅ EVENTOS DE EXCLUSÃO PARA ANÚNCIOS
           document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => {
-              openDeleteModal(btn.dataset.id);
+              const senha = prompt('Digite a senha do administrador para excluir este anúncio:');
+              if (senha === 'admin123') {
+                deleteAnuncio(btn.dataset.id);
+              } else if (senha !== null) {
+                alert('Senha incorreta.');
+              }
             });
           });
         }
@@ -779,10 +868,31 @@
       }
     }
 
+    // === EXCLUIR ANÚNCIO ===
+    async function deleteAnuncio(id) {
+      try {
+        const res = await fetch(`https://backend-gera.onrender.com/api/delete-anuncio/${id}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ senha: 'admin123' })
+        });
+        const data = await res.json();
+        if (data.success) {
+          alert('Anúncio excluído com sucesso!');
+          loadAnuncios();
+        } else {
+          alert('Erro ao excluir: ' + (data.error || ''));
+        }
+      } catch (err) {
+        alert('Erro de conexão.');
+      }
+    }
+
     // === FORMULÁRIOS ===
     document.getElementById('add-noticia-btn').addEventListener('click', () => {
-      document.getElementById('modal-noticia-title').textContent = 'Nova Notícia';
       document.getElementById('noticia-form').reset();
+      document.getElementById('modal-noticia-title').textContent = 'Nova Notícia';
+      document.getElementById('noticia-form').onsubmit = null;
       openModal('noticia-modal');
     });
 
@@ -857,37 +967,6 @@
       }
     });
 
-    // === EXCLUSÃO COM SENHA ===
-    function openDeleteModal(id) {
-      document.getElementById('delete-id').value = id;
-      openModal('delete-modal');
-    }
-
-    document.getElementById('delete-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const id = document.getElementById('delete-id').value;
-      const senha = document.getElementById('admin-password').value;
-      
-      try {
-        const res = await fetch(`https://backend-gera.onrender.com/api/delete-anuncio/${id}`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ senha })
-        });
-        
-        if (res.ok) {
-          alert('Anúncio excluído com sucesso!');
-          closeModal('delete-modal');
-          loadAnuncios();
-        } else {
-          const error = await res.json();
-          alert('Erro: ' + (error.error || 'Senha incorreta'));
-        }
-      } catch (err) {
-        alert('Erro de conexão.');
-      }
-    });
-
     // === EXPORTAR LEADS ===
     document.getElementById('export-leads').addEventListener('click', async () => {
       try {
@@ -917,7 +996,6 @@
       setInterval(loadRealtimeActions, 10000);
       updateToggleIcon();
 
-      // Carregar dados quando navegar
       document.querySelector('.nav-item[data-page="noticias"]').addEventListener('click', loadNoticias);
       document.querySelector('.nav-item[data-page="usuarios"]').addEventListener('click', loadUsuarios);
       document.querySelector('.nav-item[data-page="publicidade"]').addEventListener('click', loadAnuncios);
